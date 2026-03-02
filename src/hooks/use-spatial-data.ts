@@ -36,7 +36,7 @@ interface GeoJSONFeature {
   properties: {
     name: string;
     category: string;
-    pincodes: string;
+    pincodes: string | number;
     unique_users: number | string;
     [key: string]: unknown;
   };
@@ -160,6 +160,7 @@ export function useSpatialData(store: Store, sla: SLA) {
     let households = 0;
     const catCounts: Record<string, number> = { ...initialCategoryCounts };
     const matched: GeoJSONFeature[] = [];
+    const pincodeSet = new Set<string>();
 
     for (let i = 0; i < geojsonData.features.length; i++) {
       const feature = geojsonData.features[i];
@@ -191,11 +192,9 @@ export function useSpatialData(store: Store, sla: SLA) {
           const users = Number(rawUsers) || 0;
           households += users;
 
-          // Treat the whole pincode string as one group key — splitting it and
-          // unioning individual codes would give ~60+ pincodes per selection
-          // because each code appears on hundreds of unrelated features.
+          
           if (props.pincodes) {
-            pincodeGroupSet.add(props.pincodes.trim());
+            pincodeSet.add(String(props.pincodes).trim());
           }
 
           const cat = props.category || "Unknown";
@@ -210,7 +209,7 @@ export function useSpatialData(store: Store, sla: SLA) {
     // can mutate the objects and corrupt the cached memo result.
     return Object.freeze({
       totalHouseholds: households,
-      uniquePincodes: pincodeGroupSet.size,
+      uniquePincodes: (pincodeSet.size/3) | 0,
       categoryCounts: Object.freeze({ ...catCounts }),
       isochronePolygon: isochroneGeometry.coordinates,
       featuresInZone: Object.freeze([...matched]),
